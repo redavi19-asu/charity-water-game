@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jerry Can Dash – charity: water Prototype (Enhanced)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+    :root{
+      --cw-yellow:#ffd200; /* charity: water signature yellow approximation */
+      --cw-black:#111111;
+      --good:#20a4f3;   /* water blue */
+      --bad:#8a5a44;    /* muddy brown */
+      --accent:#00b38f; /* success green */
+      --muted:#6b7280;  /* gray-500 */
+  --game-hud-height:72px;
+  --bg-gradient:linear-gradient(140deg,#7dd3fc 0%,#fde68a 50%,#f9a8d4 100%);
+  --wordmark-gradient:linear-gradient(90deg,#0f172a 0%,#f97316 55%,#facc15 100%);
+  --wordmark-gradient-active:linear-gradient(90deg,#14b8a6 0%,#38bdf8 45%,#fbbf24 100%);
+  --modal-sheen:linear-gradient(160deg,rgba(255,240,178,.95) 0%, rgba(255,255,255,.93) 48%, rgba(255,219,242,.95) 100%);
+  --input-bg:#ffe3a3;
+  --input-border:#1d4ed8;
+  --accent-deep:#1d4ed8;
+    }
+    *{box-sizing:border-box}
+    .app.playing header{display:none;}
+    .app.playing .sidebar{display:none;}
+    .app.playing main{
+      height:calc(100vh - var(--game-hud-height));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      overflow:hidden;
+      box-sizing:border-box;
+    }
+    .play-hud{
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:12px;
+      padding:12px 18px;
+      position:sticky;
+      top:0;
+      z-index:30;
+      background:rgba(255,210,0,.1);
+      border-bottom:2px solid var(--cw-yellow);
+    }
+    .play-hud .pill{margin:0;}
+    .play-hud .pill span{min-width:36px; display:inline-block; text-align:center;}
+  .app.playing .play-hud{display:flex; animation:hudSlide 0.35s ease forwards; transform-origin:top center;}
+    .app.playing .message,
+    .app.playing .footer-note{display:none;}
+    html, body{height:100%;}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--cw-black); background:var(--bg-gradient);
+      min-height:100%; display:flex; flex-direction:column;
+      cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZmlsbD0iIzAwYjM4ZiIgZD0iTTkgNGgxMWw0IDZ2MmgtMmwxIDEyYTYgNiAwIDAxLTYgNmgtNmE2IDYgMCAwMS02LTZMNiA2YTIgMiAwIDAxMi0yeiIvPjxwYXRoIGZpbGw9IiMyMGE0ZjMiIGQ9Ik0xMSAxMmg5bDEgMTFhNCA0IDAgMDEtNCA0aC0zYTQgNCAwIDAxLTQtNHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMxMTEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBkPSJNMjAgNEg5YTIgMiAwIDAwLTIgMmwtMSAxNmE3IDcgMCAwMDcgN2g1YTcgNyAwIDAwNy03bC0xLTEyIDIgMmgydi0ybC00LTZoLTMiLz48L3N2Zz4=") 10 4, auto;
+    }
+    body.modal-open{overflow:hidden;}
+    .app{
+      flex:1 1 auto; width:100%; background:rgba(255,255,255,.85); border-radius:0; box-shadow:0 18px 45px rgba(15,23,42,.15);
+      overflow:hidden; border:3px solid rgba(250,204,21,.8); display:flex; flex-direction:column;
+      backdrop-filter:saturate(140%) blur(6px);
+    }
+    header{
+      background:linear-gradient(120deg, rgba(253,224,71,.92) 0%, rgba(249,115,22,.93) 55%, rgba(250,204,21,.92) 100%);
+      color:#111; padding:18px 24px; display:flex; flex-direction:column; gap:18px; align-items:center; justify-content:center; text-align:center; border-bottom:3px solid rgba(17,24,39,.08);
+    }
+    .title{
+      font-family:'Fredoka', 'Trebuchet MS', 'Gill Sans', system-ui, sans-serif;
+      font-weight:800;
+      letter-spacing:.2px;
+      font-size:clamp(28px, 4vw, 48px);
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      padding:6px 18px;
+      border-radius:18px;
+      cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZmlsbD0iIzAwYjM4ZiIgZD0iTTkgNGgxMWw0IDZ2MmgtMmwxIDEyYTYgNiAwIDAxLTYgNmgtNmE2IDYgMCAwMS02LTZMNiA2YTIgMiAwIDAxMi0yeiIvPjxwYXRoIGZpbGw9IiMyMGE0ZjMiIGQ9Ik0xMSAxMmg5bDEgMTFhNCA0IDAgMDEtNCA0aC0zYTQgNCAwIDAxLTQtNHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMxMTEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBkPSJNMjAgNEg5YTIgMiAwIDAwLTIgMmwtMSAxNmE3IDcgMCAwMDcgN2g1YTcgNyAwIDAwNy03bC0xLTEyIDIgMmgydi0ybC00LTZoLTMiLz48L3N2Zz4=") 10 4, pointer;
+      user-select:none;
+      transition:transform .22s ease, box-shadow .22s ease;
+    }
+    .title:hover,
+    .title:focus-visible{ transform:translateY(-1px) scale(1.02); box-shadow:0 8px 20px rgba(0,0,0,.12); }
+    .title:focus-visible{ outline:3px solid rgba(255,210,0,.55); outline-offset:4px; }
+    .title .wordmark{
+      display:inline-block;
+      text-transform:uppercase;
+      letter-spacing:.24em;
+      animation:titleFloat 7s ease-in-out infinite alternate;
+      transition:background-image .3s ease, text-shadow .24s ease;
+      background-image:var(--wordmark-gradient);
+      background-clip:text;
+      -webkit-background-clip:text;
+      color:transparent;
+      text-shadow:
+        -2px 0 0 rgba(0,0,0,.85),
+        2px 0 0 rgba(0,0,0,.85),
+        0 -2px 0 rgba(0,0,0,.85),
+        0 2px 0 rgba(0,0,0,.85),
+        -1.5px -1.5px 0 rgba(0,0,0,.75),
+        1.5px 1.5px 0 rgba(0,0,0,.75);
+    }
+    .title:hover .wordmark,
+    .title:focus-visible .wordmark{ background-image:var(--wordmark-gradient-active); text-shadow:0 6px 18px rgba(32,164,243,.28); }
+  .title .wordmark.wordmark-pop{ animation:titleFloat 7s ease-in-out infinite alternate, wordmarkPop .58s ease; }
+  .meta{display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap}
+  .pill{background:linear-gradient(120deg,rgba(254,240,138,.85),rgba(253,186,116,.85)); padding:6px 12px; border-radius:999px; font-weight:700; border:2px solid rgba(17,24,39,.25); color:#111827; box-shadow:0 4px 10px rgba(15,23,42,.12);}
+    .score{min-width:90px; text-align:center}
+    .timer{min-width:90px; text-align:center}
+    .controls{display:flex; gap:8px; flex-wrap:wrap}
+    button{
+      appearance:none; border:none; background:var(--cw-black); color:white; padding:10px 14px; border-radius:12px; font-weight:700;
+      cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZmlsbD0iIzAwYjM4ZiIgZD0iTTkgNGgxMWw0IDZ2MmgtMmwxIDEyYTYgNiAwIDAxLTYgNmgtNmE2IDYgMCAwMS02LTZMNiA2YTIgMiAwIDAxMi0yeiIvPjxwYXRoIGZpbGw9IiMyMGE0ZjMiIGQ9Ik0xMSAxMmg5bDEgMTFhNCA0IDAgMDEtNCA0aC0zYTQgNCAwIDAxLTQtNHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMxMTEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBkPSJNMjAgNEg5YTIgMiAwIDAwLTIgMmwtMSAxNmE3IDcgMCAwMDcgN2g1YTcgNyAwIDAwNy03bC0xLTEyIDIgMmgydi0ybC00LTZoLTMiLz48L3N2Zz4=") 10 4, pointer;
+      transition:transform .06s ease, box-shadow .06s ease, opacity .2s ease; box-shadow:0 4px 0 #000;
+    }
+    input, textarea{ cursor:text; }
+    button.secondary{background:white; color:var(--cw-black); border:2px solid var(--cw-black); box-shadow:none}
+  button.secondary{background:linear-gradient(120deg,rgba(255,255,255,.95),rgba(252,211,77,.95)); color:#111827; border:2px solid rgba(17,24,39,.35); box-shadow:0 6px 0 rgba(17,24,39,.18)}
+  button.ghost{background:rgba(255,255,255,.65); color:#111827; border:2px dashed rgba(17,24,39,.4); box-shadow:none}
+    button.muted{opacity:.7}
+    button:active{transform:translateY(2px); box-shadow:0 2px 0 #000}
+    main{padding:16px; display:grid; grid-template-columns: 1fr 300px; gap:16px; flex:1 1 auto; overflow:auto; min-height:0}
+    @media (max-width:920px){ main{ grid-template-columns:1fr; } }
+
+    .message{
+      grid-column:1 / -1;
+      background:linear-gradient(120deg, rgba(253,224,71,.3), rgba(250,160,255,.35)); border:2px dashed rgba(249,115,22,.45); padding:14px 16px; border-radius:14px; font-weight:700; min-height:52px; color:#111827;
+    }
+
+    .grid{
+      --min-size:140px;
+      display:grid;
+      gap:12px;
+      grid-template-columns:repeat(auto-fit, minmax(var(--min-size), 1fr));
+      justify-content:center;
+      max-width:min(100%, 540px);
+      margin:0 auto;
+    }
+    @media (max-width:680px){ .grid{ --min-size:120px; } }
+    @media (max-width:440px){ .grid{ --min-size:100px; } }
+
+    .app.playing{
+      --grid-padding:16px;
+      --grid-gap:12px;
+    }
+    .app.playing .grid{
+      display:grid;
+      gap:var(--grid-gap);
+      padding:var(--grid-padding);
+      margin:0 auto;
+      justify-content:center;
+      align-content:center;
+      grid-template-columns: repeat(var(--cols, 4), var(--cell-size, 120px));
+      grid-template-rows: repeat(var(--rows, 3), var(--cell-size, 120px));
+  width: calc(var(--cell-size, 120px) * var(--cols, 4) + var(--grid-gap, 12px) * (var(--cols, 4) - 1));
+  height: calc(var(--cell-size, 120px) * var(--rows, 3) + var(--grid-gap, 12px) * (var(--rows, 3) - 1));
+    }
+  .app.playing .hole{ border-radius:10px; width:var(--cell-size,120px); height:var(--cell-size,120px); aspect-ratio:1; }
+    @media (max-width:680px){
+      .app.playing{ --grid-padding:12px; --grid-gap:10px; }
+    }
+    @media (max-width:440px){
+      .app.playing{ --grid-gap:8px; }
+    }
+
+  .pill.pulse,
+  .pill.tick{ animation-duration:0.32s; animation-fill-mode:forwards; }
+    .pill.pulse{ animation-name:pillPulse; }
+    .pill.tick{ animation-name:pillTick; }
+  .badge.pulse{ animation:pillPulse 0.32s ease forwards; }
+
+    .badge-glow{ animation:badgeGlow 1.6s ease-in-out infinite alternate; }
+    .badge.streak-hot{ animation:streakPulse 1.2s ease-in-out infinite; }
+
+    .grid-energize{ animation:gridFlash 0.6s ease-out both; }
+    .grid-energize .hole{ animation:cellPop 0.45s ease-out both; }
+
+    @media (prefers-reduced-motion: reduce){
+  .app.playing .play-hud,
+  .title .wordmark,
+      .grid-energize,
+      .grid-energize .hole,
+      .pill.pulse,
+      .pill.tick,
+      .badge.pulse,
+      .badge-glow,
+      .badge.streak-hot{
+        animation:none !important;
+      }
+    }
+
+    .hole{
+      aspect-ratio:1; background:#f2f2f2; border-radius:18px; position:relative; overflow:hidden; border:2px solid #e5e5e5;
+    }
+    .can{
+      position:absolute; inset:auto 12px 12px 12px; height:70%; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:6px; padding:10px; font-weight:900; color:#fff;
+      transform:translateY(120%); animation:pop .25s ease forwards; user-select:none; touch-action:manipulation;
+    }
+    .can .icon{
+      width:42px; height:32px; background-size:contain; background-position:center; background-repeat:no-repeat;
+      filter:drop-shadow(0 3px 4px rgba(17,17,17,.18));
+    }
+    .can.good{ background:linear-gradient(180deg,var(--cw-yellow), #ffb600); color:#111; border:2px solid #111; }
+    .can.bad{ background:linear-gradient(180deg,var(--bad), #5f3c2d); border:2px solid #321f18; }
+    .can.power{ background:linear-gradient(180deg, var(--good), #0b82c5); border:2px solid #0b4970; }
+    .can.good .icon{ background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2032%22%3E%3Crect%20fill%3D%22none%22%20width%3D%2248%22%20height%3D%2232%22%20rx%3D%226%22/%3E%3Cpath%20fill%3D%22%2320a4f3%22%20d%3D%22M0%2018c6%200%206-6%2012-6s6%206%2012%206%206-6%2012-6%206%206%2012%206v8H0z%22/%3E%3Cpath%20fill%3D%22%2372d0ff%22%20d%3D%22M0%2022c6%200%206-6%2012-6s6%206%2012%206%206-6%2012-6%206%206%2012%206v6H0z%22/%3E%3C/svg%3E"); }
+    .can.bad .icon{ background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2032%22%3E%3Crect%20fill%3D%22none%22%20width%3D%2248%22%20height%3D%2232%22%20rx%3D%226%22/%3E%3Cpath%20fill%3D%22%238a5a44%22%20d%3D%22M0%2018c6%200%206-6%2012-6s6%206%2012%206%206-6%2012-6%206%206%2012%206v8H0z%22/%3E%3Cpath%20fill%3D%22%235f3c2d%22%20d%3D%22M0%2022c6%200%206-6%2012-6s6%206%2012%206%206-6%2012-6%206%206%2012%206v6H0z%22/%3E%3C/svg%3E"); }
+    .can.power .icon{ background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cpath%20fill%3D%22%2320a4f3%22%20d%3D%22M6%208h28l-9%2012v9l-6%204v-13z%22/%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23111%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20d%3D%22M6%208h28l-9%2012v9l-6%204v-13z%22/%3E%3Cpath%20fill%3D%22%2372d0ff%22%20d%3D%22M12%2012h16l-6%208h-4z%22/%3E%3C/svg%3E"); }
+    .can .label{ font-size:clamp(14px,2.2vw,18px); text-shadow:0 1px 0 rgba(0,0,0,.2); }
+
+  .hit{ animation:hit .18s ease }
+  @keyframes hudSlide{ from{ transform:translateY(-18px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  @keyframes titleFloat{ 0%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } 100%{ transform:translateY(0); } }
+  @keyframes wordmarkPop{ 0%{ transform:translateY(0) scale(1); } 40%{ transform:translateY(-4px) scale(1.08); } 65%{ transform:translateY(3px) scale(0.97); } 100%{ transform:translateY(0) scale(1); } }
+  @keyframes modalPop{ 0%{ transform:scale(.9); opacity:0; } 60%{ transform:scale(1.04); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes pillPulse{ 0%{ transform:scale(1); } 45%{ transform:scale(1.08); } 100%{ transform:scale(1); } }
+  @keyframes pillTick{ 0%{ transform:scale(1); } 30%{ transform:scale(1.15); } 100%{ transform:scale(1); } }
+  @keyframes badgeGlow{ 0%{ box-shadow:0 0 0 rgba(32,164,243,0); transform:translateY(0); } 100%{ box-shadow:0 0 18px rgba(32,164,243,0.45); transform:translateY(-1px); } }
+  @keyframes streakPulse{ 0%{ transform:scale(1); } 50%{ transform:scale(1.1); } 100%{ transform:scale(1); } }
+  @keyframes gridFlash{ 0%{ transform:scale(0.96); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes cellPop{ 0%{ transform:scale(0.6); opacity:0; } 60%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes shake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-6px); } 50%{ transform:translateX(6px); } 75%{ transform:translateX(-4px); } }
+  @keyframes lbGlow{ 0%{ background:transparent; box-shadow:none; } 100%{ background:rgba(255,210,0,.18); box-shadow:0 0 0 3px rgba(255,210,0,.25); } }
+  @keyframes hit{ 50%{ transform:translateY(10%) scale(.96);} }
+  @keyframes pop{ from{ transform:translateY(120%); } to{ transform:translateY(0%);} }
+
+    .sidebar{ display:grid; gap:12px; align-content:start }
+  .panel{ background:rgba(255,255,255,.85); border:2px solid rgba(148,163,184,.35); border-radius:16px; padding:16px; backdrop-filter:blur(3px); box-shadow:0 10px 22px rgba(15,23,42,.08); }
+  .panel h3{ margin:0 0 10px 0; font-size:17px; letter-spacing:.08em; text-transform:uppercase; color:#0f172a; }
+  .status{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  .badge{ padding:8px 14px; border-radius:999px; border:2px solid rgba(15,23,42,.55); font-weight:700; background:linear-gradient(120deg,rgba(255,255,255,.9),rgba(254,240,138,.9)); color:#0f172a; }
+  .badge.active{ background:linear-gradient(120deg,rgba(45,212,191,.95),rgba(59,130,246,.95)); color:white; border-color:rgba(59,130,246,.8); }
+
+    .leaderboard ol{ margin:0; padding-left:18px }
+    .leaderboard li{ padding:6px 0; display:flex; justify-content:space-between; gap:12px; align-items:center; font-size:16px; font-weight:600 }
+    .leaderboard small{ color:var(--muted) }
+    .leaderboard li.lb-new{ animation:lbGlow 0.6s ease alternate 3; }
+
+    .footer-note{grid-column:1 / -1; font-size:13px; opacity:.8}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+    canvas#confetti{position:fixed; inset:0; pointer-events:none}
+
+    .modal-backdrop{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:rgba(17,17,17,.6); backdrop-filter:blur(4px); visibility:hidden; opacity:0; transition:opacity .24s ease, visibility .24s ease;
+      z-index:60; padding:16px;
+    }
+    .modal-backdrop.show{ visibility:visible; opacity:1; }
+    .modal{
+      background:var(--modal-sheen); border-radius:24px; padding:36px; width:min(460px, 100%);
+      box-shadow:0 28px 50px rgba(15,23,42,.25); transform:translateY(18px) scale(.94); opacity:0;
+      transition:transform .24s ease, opacity .24s ease;
+    }
+    .modal-backdrop.show .modal{ transform:translateY(0) scale(1); opacity:1; animation:modalPop .34s ease; }
+    .modal h3{ margin:0 0 14px 0; font-size:26px; color:var(--accent-deep); text-shadow:0 2px 6px rgba(29,78,216,.22); }
+    .modal p.modal-sub{ margin:0 0 22px 0; color:#111827; font-weight:600; letter-spacing:.2px; }
+    .modal label{ display:block; font-weight:700; margin-bottom:10px; color:var(--accent-deep); text-transform:uppercase; letter-spacing:.12em; }
+    .modal input[type="text"]{
+      width:100%; padding:16px 18px; border-radius:16px; border:3px solid var(--input-border);
+      font-size:22px; font-weight:800; text-transform:uppercase; letter-spacing:.14em;
+      background:var(--input-bg);
+      color:#041637;
+      -webkit-text-stroke:1.2px rgba(255,255,255,.85);
+      text-shadow:
+        -1px 0 0 rgba(255,255,255,.9),
+        1px 0 0 rgba(255,255,255,.9),
+        0 -1px 0 rgba(255,255,255,.9),
+        0 1px 0 rgba(255,255,255,.9),
+        0 0 6px rgba(255,255,255,.75);
+      transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    .modal input[type="text"]:focus{ outline:none; border-color:#f97316; box-shadow:0 0 0 6px rgba(249,115,22,.35); transform:translateY(-2px);
+    }
+    .modal .input-wrap{ margin-bottom:22px; }
+    .modal .error-text{ color:#be123c; font-size:15px; font-weight:700; min-height:20px; letter-spacing:.05em; }
+    .modal-actions{ display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap; }
+    .modal-actions button{ min-width:140px; }
+    .input-error{ animation:shake .4s ease; border-color:#d946ef !important; box-shadow:0 0 0 6px rgba(217,70,239,.28) !important; }
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="app" role="application" aria-label="Jerry Can Dash game">
+    <header>
+  <div class="title" tabindex="0" role="button">💧 <span class="wordmark" aria-hidden="true">Jerry Can Dash</span> <span class="sr-only">Jerry Can Dash – charity: water</span></div>
+      <div class="meta">
+        <div class="pill score" aria-live="polite">Score: <span id="score">0</span></div>
+        <div class="pill timer" aria-live="polite">Time: <span id="time">30</span>s</div>
+        <div class="controls">
+          <button id="startBtn" title="Start game">Start</button>
+          <button id="resetBtn" title="Reset game" aria-label="Reset game">Reset</button>
+          <button id="muteBtn" class="secondary" title="Toggle sound">🔊 Sound</button>
+        </div>
+      </div>
+    </header>
+    <div class="play-hud" id="playHud" aria-hidden="true">
+      <div class="pill score" aria-live="polite">Score: <span id="scoreHud">0</span></div>
+      <div class="pill timer" aria-live="polite">Time: <span id="timeHud">30</span>s</div>
+      <button id="quitBtn" class="secondary" title="Quit game" aria-label="Quit game">Quit</button>
+    </div>
+    <main>
+      <div class="message" id="message">Tap clean yellow cans to build wells. Avoid muddy cans (−1). Power‑ups (blue) grant a 5s Filter that protects you from dirty cans.</div>
+
+      <section class="grid" id="grid" aria-label="playfield"></section>
+
+      <aside class="sidebar">
+        <div class="panel status">
+          <h3>Status</h3>
+          <span id="filterBadge" class="badge">Filter: Off</span>
+          <span id="streakBadge" class="badge">Streak: 0</span>
+        </div>
+        <div class="panel leaderboard">
+          <h3>Leaderboard (Top 5)</h3>
+          <ol id="lbList"></ol>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button id="saveScoreBtn" class="secondary">Save Score</button>
+            <button id="clearLbBtn" class="ghost">Clear</button>
+          </div>
+        </div>
+        <div class="panel tips">
+          <h3>Tips</h3>
+          <p>• S to Start, R to Reset.<br>• Mobile: haptics on hits.<br>• Power‑up converts the next dirty hit into clean (or blocks the penalty) for 5s.</p>
+        </div>
+      </aside>
+
+      <div class="footer-note">Student prototype honoring charity: water. Colors inspired by brand; no official assets used.</div>
+    </main>
+    <div class="modal-backdrop" id="nameModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle">
+        <h3 id="nameModalTitle">Save Your Impact</h3>
+        <p class="modal-sub">Final score: <span id="modalScore">0</span> pts</p>
+        <form id="nameForm">
+          <div class="input-wrap">
+            <label for="nameInput">Leader name (3–12 letters or numbers)</label>
+            <input id="nameInput" name="nameInput" type="text" autocomplete="name" maxlength="12" placeholder="PLAYER" aria-describedby="nameError" />
+            <div id="nameError" class="error-text"></div>
+          </div>
+          <div class="modal-actions">
+            <button type="submit">Save Score</button>
+            <button type="button" class="ghost" id="nameCancelBtn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======= Config =======
+    const HOLES = 12;                 // grid size
+    const GAME_LEN = 30;              // seconds
+    const SPAWN_MS_BASE = 900;        // base spawn interval
+    const CAN_LIFE_MS = 1000;         // visible lifetime
+    const BAD_RATE = 0.28;            // chance a spawn is bad
+    const POWER_RATE = 0.10;          // chance a spawn is a power-up
+    const WIN_SCORE = 30;             // win threshold for confetti
+    const FILTER_MS = 5000;           // power-up duration
+    const LB_KEY = 'jerry-can-dash-leaderboard-v1';
+    const NAME_KEY = 'jerry-can-dash-last-name';
+    // ======= State =======
+    const root = document.documentElement;
+    const app = document.querySelector('.app');
+    const grid = document.getElementById('grid');
+    const scoreDisplays = [document.getElementById('score'), document.getElementById('scoreHud')].filter(Boolean);
+    const timeDisplays = [document.getElementById('time'), document.getElementById('timeHud')].filter(Boolean);
+    const msgEl = document.getElementById('message');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const muteBtn  = document.getElementById('muteBtn');
+    const filterBadge = document.getElementById('filterBadge');
+    const streakBadge = document.getElementById('streakBadge');
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const clearLbBtn = document.getElementById('clearLbBtn');
+    const lbList = document.getElementById('lbList');
+    const playHud = document.getElementById('playHud');
+    const quitBtn = document.getElementById('quitBtn');
+  const titleEl = document.querySelector('.title');
+  const wordmark = document.querySelector('.wordmark');
+    const bodyEl = document.body;
+    const nameModal = document.getElementById('nameModal');
+    const nameForm = document.getElementById('nameForm');
+    const nameInput = document.getElementById('nameInput');
+    const nameError = document.getElementById('nameError');
+    const modalScoreEl = document.getElementById('modalScore');
+    const nameCancelBtn = document.getElementById('nameCancelBtn');
+
+    function updateScoreDisplays(value){
+      scoreDisplays.forEach(el => {
+        el.textContent = value;
+        animatePill(el.closest('.pill'), 'pulse');
+      });
+    }
+
+    function updateTimeDisplays(value){
+      timeDisplays.forEach(el => {
+        el.textContent = value;
+        const pill = el.closest('.pill');
+        if(value <= 10 || value % 5 === 0){
+          animatePill(pill, 'tick', 360);
+        } else if(pill){
+          pill.classList.remove('tick');
+        }
+      });
+    }
+
+    function animatePill(pill, className, duration=320){
+      if(!pill) return;
+      pill.classList.remove(className);
+      void pill.offsetWidth;
+      pill.classList.add(className);
+      setTimeout(()=> pill.classList.remove(className), duration);
+    }
+
+    function animateWordmark(){
+      if(!wordmark) return;
+      wordmark.classList.remove('wordmark-pop');
+      void wordmark.offsetWidth;
+      wordmark.classList.add('wordmark-pop');
+    }
+
+    function sanitizeName(raw){
+      const trimmed = (raw || '').toUpperCase().replace(/[^A-Z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
+      return trimmed.slice(0, 12);
+    }
+
+    function showNameError(message){
+      if(nameError){ nameError.textContent = message; }
+      if(nameInput){
+        nameInput.classList.remove('input-error');
+        void nameInput.offsetWidth;
+        nameInput.classList.add('input-error');
+      }
+    }
+
+    function syncHudHeight(){
+      if(!playHud) return;
+      const measured = playHud.offsetHeight || 0;
+      const safeHeight = Math.max(measured, 60);
+      root.style.setProperty('--game-hud-height', `${safeHeight}px`);
+    }
+
+    function clearHudHeight(){
+      root.style.removeProperty('--game-hud-height');
+    }
+
+    let score = 0, timeLeft = GAME_LEN, playing = false;
+    let spawnTimer = null, countdownTimer = null;
+    let streak = 0;
+    let filterActive = false, filterTO = null;
+    let muted = false;
+    let modalOpen = false, pendingScore = 0;
+    let lastFocusEl = null;
+    let modalFocusables = [];
+    let lbHighlight = null;
+    let cachedName = localStorage.getItem(NAME_KEY) || 'PLAYER';
+    updateScoreDisplays(score);
+    updateTimeDisplays(timeLeft);
+
+    function computeGridSize(){
+      if(!grid) return;
+      // decide layout based on width breakpoints: default 4x3, narrow 3x4, narrowest 2x6
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const hud = parseInt(getComputedStyle(root).getPropertyValue('--game-hud-height')) || 72;
+      let cols=4, rows=3;
+      if(vw <= 440) { cols=2; rows=6; }
+      else if(vw <= 680) { cols=3; rows=4; }
+      // available area for grid
+  const padding = parseInt(getComputedStyle(app).getPropertyValue('--grid-padding')) || 16;
+  const gap = parseInt(getComputedStyle(app).getPropertyValue('--grid-gap')) || 12;
+  const totalGapW = gap * (cols - 1);
+  const totalGapH = gap * (rows - 1);
+  const availableW = Math.max(vw - padding*2 - totalGapW, cols * 40);
+  const availableH = Math.max(vh - hud - padding*2 - totalGapH, rows * 40);
+      // cell size limited by both width and height
+      const cellW = Math.floor(availableW / cols);
+      const cellH = Math.floor(availableH / rows);
+      const cell = Math.max(40, Math.min(cellW, cellH));
+      root.style.setProperty('--cols', cols);
+      root.style.setProperty('--rows', rows);
+      root.style.setProperty('--cell-size', `${cell}px`);
+    }
+
+
+    // ======= Build Grid =======
+    function buildGrid(){
+      grid.innerHTML = '';
+      for(let i=0;i<HOLES;i++){
+        const hole = document.createElement('div');
+        hole.className = 'hole';
+        grid.appendChild(hole);
+      }
+    }
+
+    // ======= Audio (WebAudio, no external files) =======
+    const AudioKit = (()=>{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      function tone(freq=440, dur=0.08, type='triangle', gain=0.05){
+        if(muted) return;
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime+dur);
+      }
+      function click(){ tone(900,0.04,'square',0.03); }
+      function good(){ tone(660,0.09,'sine',0.06); }
+      function bad(){ tone(160,0.12,'sawtooth',0.06); }
+      function win(){ tone(740,0.12); setTimeout(()=>tone(880,0.12),120); setTimeout(()=>tone(988,0.12),240); }
+      return {click, good, bad, win};
+    })();
+
+    function haptic(ms=30){ if('vibrate' in navigator) navigator.vibrate(ms); }
+
+    // ======= Spawn =======
+    function spawn(){
+      const holes = [...document.querySelectorAll('.hole')];
+      const empty = holes.filter(h => !h.querySelector('.can'));
+      if(!empty.length) return;
+      const hole = empty[Math.floor(Math.random()*empty.length)];
+
+      // Decide type
+      let kind = 'good';
+      const roll = Math.random();
+      if(roll < POWER_RATE){ kind = 'power'; }
+      else if(roll < POWER_RATE + BAD_RATE){ kind = 'bad'; }
+
+      const can = document.createElement('button');
+      can.className = `can ${kind}`;
+      can.setAttribute('aria-label', kind==='good'? 'Clean water can' : kind==='bad'? 'Dirty water can' : 'Filter power-up');
+  const labelText = kind==='good'? 'Clean' : kind==='bad'? 'Dirty' : 'Filter';
+  can.innerHTML = `<span class="icon" aria-hidden="true"></span><span class="label">${labelText}</span>`;
+
+      const clear = () => can.remove();
+      const ttl = setTimeout(clear, CAN_LIFE_MS);
+
+      const onHit = (e)=>{
+        if(!playing) return;
+        can.classList.add('hit');
+        if(kind==='power'){
+          activateFilter();
+          pulse(msgEl, 'Filter acquired! 5s protection.');
+          AudioKit.click(); haptic(15);
+        } else if(kind==='good'){
+          streak++; score++;
+          updateScoreDisplays(score); updateStreak();
+          pulse(msgEl, 'Nice! Clean water collected.');
+          AudioKit.good(); haptic(20);
+        } else { // bad
+          if(filterActive){
+            // Convert penalty to neutral/benefit
+            streak++; score++; // reward protected action lightly
+            updateScoreDisplays(score); updateStreak();
+            pulse(msgEl, 'Filter blocked contamination! +1');
+            AudioKit.good(); haptic(20);
+          } else {
+            streak = 0;
+            score = Math.max(0, score-1);
+            updateScoreDisplays(score); updateStreak();
+            pulse(msgEl, 'Uh-oh! Dirty source. −1');
+            AudioKit.bad(); haptic(35);
+          }
+        }
+        if(score >= WIN_SCORE){ celebrate(); AudioKit.win(); haptic([50,40,50]); endGame(); }
+        clearTimeout(ttl);
+        clear();
+      };
+
+      // Pointer events (works for mouse + touch)
+      can.addEventListener('pointerdown', onHit, { once:true });
+      hole.appendChild(can);
+    }
+
+    function updateStreak(){
+      streakBadge.textContent = `Streak: ${streak}`;
+      if(streak>0){
+        streakBadge.classList.add('active');
+      } else {
+        streakBadge.classList.remove('active');
+        streakBadge.classList.remove('pulse');
+      }
+      streakBadge.classList.toggle('streak-hot', streak >= 3);
+      if(streak>0){ animatePill(streakBadge, 'pulse', 320); }
+    }
+
+    // ======= Power-up =======
+    function activateFilter(){
+      clearTimeout(filterTO);
+      filterActive = true;
+      filterBadge.textContent = 'Filter: On';
+      filterBadge.classList.add('active');
+      filterBadge.classList.add('badge-glow');
+  animatePill(filterBadge, 'pulse', 320);
+      filterTO = setTimeout(()=>{
+        filterActive = false;
+        filterBadge.textContent = 'Filter: Off';
+        filterBadge.classList.remove('active');
+        filterBadge.classList.remove('badge-glow');
+        filterBadge.classList.remove('pulse');
+      }, FILTER_MS);
+    }
+
+    // ======= Game Loop =======
+    function gameLoop(){
+      const factor = 1 + ((GAME_LEN - timeLeft) / GAME_LEN) * 0.35; // speed up
+      const next = Math.max(280, SPAWN_MS_BASE / factor);
+      spawn();
+      spawnTimer = setTimeout(gameLoop, next);
+    }
+
+    function startGame(){
+      if(playing) return;
+      closeModal();
+      playing = true;
+      app.classList.add('playing');
+      if(playHud){ playHud.setAttribute('aria-hidden', 'false'); }
+      syncHudHeight();
+      computeGridSize();
+      requestAnimationFrame(()=>{
+        syncHudHeight();
+        computeGridSize();
+        grid.classList.add('grid-energize');
+        setTimeout(()=> grid.classList.remove('grid-energize'), 650);
+      });
+      msgEl.textContent = 'Game on! Collect clean cans, avoid dirty ones. Grab Filter power-ups!';
+      score = 0; updateScoreDisplays(score); streak = 0; updateStreak();
+      timeLeft = GAME_LEN; updateTimeDisplays(timeLeft);
+      clearTimers(); stopConfetti();
+      gameLoop();
+      countdownTimer = setInterval(()=>{
+        timeLeft--; updateTimeDisplays(timeLeft);
+        if(timeLeft === 20) pulse(msgEl, 'Milestone: community tap unlocked—keep going!');
+        if(timeLeft === 10) pulse(msgEl, '10s left! Push for more impact!');
+        if(timeLeft <= 0){ endGame(); }
+      }, 1000);
+    }
+
+    function endGame(){
+      playing = false;
+      clearTimers();
+      app.classList.remove('playing');
+      clearHudHeight();
+      if(playHud){ playHud.setAttribute('aria-hidden', 'true'); }
+      grid.classList.remove('grid-energize');
+      root.style.removeProperty('--cols');
+      root.style.removeProperty('--rows');
+      root.style.removeProperty('--cell-size');
+      msgEl.textContent = score >= WIN_SCORE ? 'You funded a village well! 🎉 Save your score.' : `Time! Impact score: ${score}. Save it on the board.`;
+    }
+
+    function resetGame(){
+      playing = false; clearTimers();
+      closeModal();
+      app.classList.remove('playing');
+      clearHudHeight();
+      if(playHud){ playHud.setAttribute('aria-hidden', 'true'); }
+      grid.classList.remove('grid-energize');
+      root.style.removeProperty('--cols');
+      root.style.removeProperty('--rows');
+      root.style.removeProperty('--cell-size');
+      score = 0; updateScoreDisplays(score); streak = 0; updateStreak();
+      timeLeft = GAME_LEN; updateTimeDisplays(timeLeft);
+      msgEl.textContent = 'Tap clean cans. Avoid muddy. Power-ups grant Filter for 5s.';
+      document.querySelectorAll('.can').forEach(n=>n.remove());
+      stopConfetti(); deactivateFilter();
+    }
+
+    function deactivateFilter(){
+      clearTimeout(filterTO); filterActive=false; filterBadge.textContent='Filter: Off'; filterBadge.classList.remove('active'); filterBadge.classList.remove('badge-glow'); filterBadge.classList.remove('pulse');
+    }
+
+    function clearTimers(){
+      if(spawnTimer){ clearTimeout(spawnTimer); spawnTimer=null; }
+      if(countdownTimer){ clearInterval(countdownTimer); countdownTimer=null; }
+    }
+
+    function pulse(el, text){ el.textContent = text; el.style.transition='transform .12s'; el.style.transform='scale(1.02)'; setTimeout(()=> el.style.transform='scale(1)', 120); }
+
+    startBtn.addEventListener('click', ()=>{ AudioKit.click(); startGame(); });
+    resetBtn.addEventListener('click', ()=>{ AudioKit.click(); resetGame(); });
+    muteBtn.addEventListener('click', ()=>{ muted = !muted; muteBtn.textContent = muted? '🔇 Muted' : '🔊 Sound'; muteBtn.classList.toggle('muted', muted); });
+    if(quitBtn){
+      quitBtn.addEventListener('click', ()=>{ AudioKit.click(); resetGame(); });
+    }
+
+    if(titleEl){
+      titleEl.addEventListener('pointerenter', ()=> animateWordmark());
+      titleEl.addEventListener('focus', ()=> animateWordmark());
+      titleEl.addEventListener('click', ()=>{ AudioKit.click(); animateWordmark(); });
+      titleEl.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); AudioKit.click(); animateWordmark(); }
+      });
+      if(!titleEl.hasAttribute('tabindex')){ titleEl.setAttribute('tabindex', '0'); }
+    }
+
+    window.addEventListener('resize', ()=>{
+      if(playing){
+        syncHudHeight();
+        computeGridSize();
+      }
+    });
+
+    if('ResizeObserver' in window){
+      const ro = new ResizeObserver(()=>{
+        if(playing){
+          syncHudHeight();
+          computeGridSize();
+        }
+      });
+      ro.observe(document.body);
+      if(playHud){ ro.observe(playHud); }
+    }
+
+    document.addEventListener('keydown', (e)=>{
+      if(modalOpen) return;
+      const k = e.key.toLowerCase();
+      if(k==='s') startGame(); if(k==='r') resetGame();
+    });
+
+    buildGrid();
+
+    // ======= Confetti =======
+    const confettiCanvas = document.getElementById('confetti');
+    const ctx = confettiCanvas.getContext('2d');
+    let particles = [], confettiRAF=null, confettiActive=false;
+    function resizeCanvas(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+    function celebrate(){
+      confettiActive = true; particles = [];
+      const count = Math.min(220, 90 + score*2);
+      for(let i=0;i<count;i++){
+        particles.push({ x: Math.random()*confettiCanvas.width, y: -10 - Math.random()*80, vx: (Math.random()-0.5)*4, vy: 2+Math.random()*3, size: 4+Math.random()*4, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2, color: ['#ffd200','#20a4f3','#00b38f','#ff6b6b','#111'][Math.floor(Math.random()*5)] })
+      }
+      if(!confettiRAF){ loopConfetti(); }
+      setTimeout(stopConfetti, 3000);
+    }
+    function loopConfetti(){
+      confettiRAF = requestAnimationFrame(loopConfetti);
+      if(!confettiActive){ ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height); return; }
+      ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      particles.forEach(p=>{ p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += 0.03; if(p.y > confettiCanvas.height+20) { p.y = -10; p.x = Math.random()*confettiCanvas.width; }
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size); ctx.restore(); });
+    }
+    function stopConfetti(){ confettiActive=false; if(confettiRAF){ cancelAnimationFrame(confettiRAF); confettiRAF=null; } ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height); }
+
+    // ======= Leaderboard (localStorage) =======
+    function loadLB(){
+      try{ return JSON.parse(localStorage.getItem(LB_KEY)) || []; }catch{ return []; }
+    }
+    function saveLB(list){ localStorage.setItem(LB_KEY, JSON.stringify(list.slice(0,5))); }
+    function renderLB(){
+      const list = loadLB();
+      lbList.innerHTML = list.length? '' : '<li><small>No scores yet.</small></li>';
+      let highlightApplied = false;
+      list.forEach((row,i)=>{
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${i+1}. ${row.name}</span><small>${row.score} pts</small>`;
+        if(!highlightApplied && lbHighlight && row.name === lbHighlight.name && row.score === lbHighlight.score){
+          li.classList.add('lb-new');
+          highlightApplied = true;
+        }
+        lbList.appendChild(li);
+      });
+  if(lbHighlight && !highlightApplied){ lbHighlight = null; }
+    }
+    renderLB();
+    function openModal(opts={}){
+      if(!nameModal || modalOpen) return;
+      modalOpen = true;
+      bodyEl.classList.add('modal-open');
+      nameModal.classList.add('show');
+      nameModal.setAttribute('aria-hidden', 'false');
+      lastFocusEl = document.activeElement;
+      const fillName = sanitizeName(opts.prefill ?? cachedName ?? 'PLAYER');
+      pendingScore = opts.score ?? score;
+      if(modalScoreEl){ modalScoreEl.textContent = pendingScore; }
+      if(nameInput){
+        nameInput.value = fillName;
+        nameInput.select();
+      }
+      if(nameError){ nameError.textContent = ''; }
+      modalFocusables = Array.from(nameModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el=> !el.disabled && el.offsetParent !== null);
+      requestAnimationFrame(()=>{ if(nameInput){ nameInput.focus(); }});
+    }
+
+    function closeModal(){
+      if(!modalOpen) return;
+      modalOpen = false;
+      pendingScore = 0;
+      bodyEl.classList.remove('modal-open');
+      if(nameModal){
+        nameModal.classList.remove('show');
+        nameModal.setAttribute('aria-hidden', 'true');
+      }
+      if(nameError){ nameError.textContent = ''; }
+      if(nameInput){ nameInput.classList.remove('input-error'); }
+      if(lastFocusEl && typeof lastFocusEl.focus === 'function'){ lastFocusEl.focus(); }
+      lastFocusEl = null;
+      modalFocusables = [];
+    }
+
+    function validateName(value){
+      const clean = sanitizeName(value);
+      if(clean.length < 3){
+        showNameError('Please enter at least 3 characters.');
+        return null;
+      }
+      if(!/^[A-Z0-9 ]{3,12}$/.test(clean)){
+        showNameError('Letters/numbers only (3–12).');
+        return null;
+      }
+      if(nameError){ nameError.textContent = ''; }
+      if(nameInput){ nameInput.classList.remove('input-error'); }
+      return clean;
+    }
+
+  function persistScoreEntry(entryScore, nameValue){
+      const list = loadLB();
+      const row = { name: nameValue, score: entryScore };
+      list.push(row);
+      list.sort((a,b)=> b.score - a.score);
+      saveLB(list);
+      lbHighlight = row;
+      renderLB();
+      cachedName = nameValue;
+      localStorage.setItem(NAME_KEY, nameValue);
+    }
+
+    saveScoreBtn.addEventListener('click', ()=>{
+      openModal({ score });
+    });
+
+    if(nameCancelBtn){
+      nameCancelBtn.addEventListener('click', ()=> closeModal());
+    }
+
+    if(nameForm){
+      nameForm.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const clean = validateName(nameInput?.value || '');
+        if(!clean) return;
+        persistScoreEntry(pendingScore || score, clean);
+        closeModal();
+      });
+    }
+
+    if(nameModal){
+      nameModal.addEventListener('click', (e)=>{
+        if(e.target === nameModal){ closeModal(); }
+      });
+    }
+
+    document.addEventListener('keydown', (e)=>{
+      if(modalOpen){
+        if(e.key === 'Escape'){ e.preventDefault(); closeModal(); }
+        if(e.key === 'Tab' && modalFocusables.length){
+          const first = modalFocusables[0];
+          const last = modalFocusables[modalFocusables.length - 1];
+          if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+          else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+        }
+      }
+    }, true);
+
+    clearLbBtn.addEventListener('click', ()=>{
+      if(confirm('Clear leaderboard?')){ localStorage.removeItem(LB_KEY); renderLB(); }
+    });
+  </script>
+</body>
+</html>
